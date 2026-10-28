@@ -152,6 +152,7 @@ activemq-data/
 # Environments
 .env
 .envrc
+.browser-profile/
 .venv
 env/
 venv/

@@ -1,2 +1,41 @@
 # preorder-sniper
-Single-user stock watcher + assisted checkout for limited preorders (Amazon, Target, Best Buy)
+
+Single-user stock watcher and assisted checkout for limited preorders at Amazon, Target, and
+Best Buy.
+
+## Setup
+
+Requires Python 3.11+.
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -e ".[dev]"
+playwright install chromium
+Copy-Item .env.example .env
+Copy-Item products.example.json products.json
+```
+
+Replace the placeholder URLs in `products.json` with the exact product pages. Selectors can
+change without notice; use each retailer's product page and browser developer tools to confirm
+them before a release.
+
+Sign in to each retailer once using the browser profile that the tool will reuse:
+
+```powershell
+preorder-sniper --browser-data-dir .browser-profile --login
+```
+
+Then run the monitor:
+
+```powershell
+preorder-sniper --browser-data-dir .browser-profile
+```
+
+When an availability marker appears, the tool logs and optionally posts a webhook alert, adds
+the product to the cart, and opens checkout in the saved browser profile for ten minutes. It
+**never submits an order**, handles CAPTCHAs, or bypasses queues. Review the order and place it
+manually.
+
+Use the retailer sites in accordance with their terms. Keep `products.json`, `.env`, and the
+browser profile private; do not store credentials or payment details in this repository.
