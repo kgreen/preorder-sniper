@@ -70,12 +70,15 @@ async def watch_forever(
             if isinstance(result, Exception):
                 logger.warning("Check failed for %s: %s", product.retailer, result)
                 continue
-            if result.available and product not in seen_available:
-                seen_available.add(product)
+            if result.available:
+                if product in seen_available:
+                    continue
                 try:
                     await on_available(result)
                 except Exception:
-                    logger.exception("Availability callback failed for %s", product.name)
-            elif not result.available:
+                    logger.exception("Availability callback failed for %s; retrying on the next poll.", product.name)
+                    continue
+                seen_available.add(product)
+            else:
                 seen_available.discard(product)
         await asyncio.sleep(interval_seconds + random.uniform(0, jitter_seconds))
