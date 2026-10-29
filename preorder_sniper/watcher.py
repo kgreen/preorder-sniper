@@ -4,6 +4,9 @@ import asyncio
 import logging
 import random
 import re
+import time
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 
 import httpx
 
@@ -54,6 +57,21 @@ def selector_matches_html(selector: str, html: str) -> bool:
     return re.search(pattern, html, flags=re.IGNORECASE) is not None
 
 
+def rate_limit_delay(error: Exception, interval_seconds: float) -> float:
+    """Return a backoff delay in seconds for an HTTP 429 error, else 0."""
+    if not isinstance(error, httpx.HTTPStatusError) or error.response.status_code != 429:
+        return 0.0
+    retry_after = error.response.headers.get("Retry-After", "")
+    try:
+        delay = float(retry_after)
+    except ValueError:
+        try:
+            delay = (parsedate_to_datetime(retry_after) - datetime.now(timezone.utc)).total_seconds()
+        except (TypeError, ValueError):
+            delay = interval_seconds * 6
+    return min(max(delay, interval_seconds), 600.0)
+
+
 async def watch_forever(
     watcher: ProductWatcher,
     products: list[Product],
@@ -62,14 +80,20 @@ async def watch_forever(
     on_available,
 ) -> None:
     seen_available: set[Product] = set()
+    backoff_until: dict[Product, float] = {}
     while True:
-        results = await asyncio.gather(
-            *(watcher.check(product) for product in products), return_exceptions=True
-        )
-        for product, result in zip(products, results, strict=True):
+        now = time.monotonic()
+        due = [p for p in products if backoff_until.get(p, 0) <= now]
+        results = await asyncio.gather(*(watcher.check(p) for p in due), return_exceptions=True)
+        for product, result in zip(due, results, strict=True):
             if isinstance(result, Exception):
                 logger.warning("Check failed for %s: %s", product.retailer, result)
+                delay = rate_limit_delay(result, interval_seconds)
+                if delay:
+                    backoff_until[product] = time.monotonic() + delay
+                    logger.warning("Backing off %s for %.0fs after HTTP 429", product.name, delay)
                 continue
+            backoff_until.pop(product, None)
             if result.available:
                 if product in seen_available:
                     continue
