@@ -124,6 +124,72 @@ def test_auto_checkout_alerts_and_starts_checkout(monkeypatch):
     assert calls == {"alerts": 1, "checkouts": 1}
 
 
+def test_auto_checkout_runs_background_tasks_serially(monkeypatch):
+    product_a = Product("amazon", "A", "https://example.com/a", "#a", "#b", "#c")
+    product_b = Product("target", "B", "https://example.com/b", "#d", "#e", "#f")
+    first_started = asyncio.Event()
+    second_started = asyncio.Event()
+    release_first = asyncio.Event()
+    started = []
+
+    class FakeNotifier:
+        def __init__(self, *a):
+            pass
+
+        async def stock_available(self, result):
+            pass
+
+    class FakeCheckout:
+        def __init__(self, *a):
+            pass
+
+        async def run(self, product):
+            started.append(product.name)
+            if product.name == "A":
+                first_started.set()
+                await release_first.wait()
+            else:
+                second_started.set()
+
+    class FakeWatcher:
+        def __init__(self, *a):
+            pass
+
+        async def close(self):
+            pass
+
+    async def fake_watch(watcher, products, interval, jitter, on_available):
+        await on_available(StockResult(product_a, True, "found"))
+        await first_started.wait()
+        await on_available(StockResult(product_b, True, "found"))
+        await asyncio.sleep(0.05)
+        assert started == ["A"]
+        release_first.set()
+        await second_started.wait()
+        await asyncio.sleep(0.05)
+
+    monkeypatch.setattr(cli, "prompt_for_checkout_approval", lambda: True)
+    monkeypatch.setattr(cli, "load_products", lambda path: [product_a, product_b])
+    monkeypatch.setattr(cli, "load_settings", lambda: type("Settings", (), {
+        "webhook_url": None,
+        "sms_to_number": None,
+        "sms_from_number": None,
+        "twilio_account_sid": None,
+        "twilio_auth_token": None,
+        "poll_interval_seconds": 0,
+        "poll_jitter_seconds": 0,
+        "request_timeout_seconds": 1,
+    })())
+    monkeypatch.setattr(cli, "Notifier", FakeNotifier)
+    monkeypatch.setattr(cli, "AssistedCheckout", FakeCheckout)
+    monkeypatch.setattr(cli, "ProductWatcher", FakeWatcher)
+    monkeypatch.setattr(cli, "watch_forever", fake_watch)
+
+    asyncio.run(cli.run(_args(auto_checkout=True)))
+
+    assert started == ["A", "B"]
+
+
 def test_auto_checkout_logs_background_failures(monkeypatch, caplog):
     class FakeNotifier:
         def __init__(self, *a):
