@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
+import sys
 from pathlib import Path
 
 from .checkout import AssistedCheckout
@@ -24,14 +25,55 @@ def parse_args() -> argparse.Namespace:
         help="Open the retailer pages for five minutes so you can sign in to the saved profile.",
     )
     parser.add_argument(
-        "--no-checkout", action="store_true", help="Alert only; do not open assisted checkout."
+        "--auto-checkout",
+        action="store_true",
+        help="Opt in: add to cart and open checkout when stock appears (never submits an order).",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Monitor and log availability only; send no alerts and open no browser.",
+    )
+    parser.add_argument(
+        "--validate-selectors",
+        action="store_true",
+        help="Open each configured retailer page in the persistent browser and confirm the configured selectors still match the live page without bypassing anti-bot protections.",
     )
     return parser.parse_args()
+
+
+def prompt_for_checkout_approval() -> bool:
+    if not sys.stdin.isatty():
+        logging.getLogger(__name__).warning(
+            "Auto-checkout approval skipped because stdin is not interactive; checkout was not started."
+        )
+        return False
+    response = input(
+        "Approve opening the saved retailer browser session to add to cart and open checkout? [y/N]: "
+    ).strip().lower()
+    return response in {"y", "yes"}
 
 
 async def run(args: argparse.Namespace) -> None:
     settings = load_settings()
     products = load_products(args.products)
+
+    if args.dry_run:
+        args.auto_checkout = False
+    if args.dry_run and args.login:
+        logging.getLogger(__name__).warning("DRY RUN: skipping login workflow so no browser pages are opened.")
+        return
+
+    checkout = AssistedCheckout(args.browser_data_dir, args.headless)
+    if args.validate_selectors:
+        if args.dry_run:
+            logging.getLogger(__name__).warning(
+                "DRY RUN: selector validation requires a browser session; skipping without opening pages."
+            )
+            return
+        await checkout.validate_products(products)
+        return
+
     notifier = Notifier(
         settings.webhook_url,
         settings.sms_to_number,
@@ -39,10 +81,14 @@ async def run(args: argparse.Namespace) -> None:
         settings.twilio_account_sid,
         settings.twilio_auth_token,
     )
-    checkout = AssistedCheckout(args.browser_data_dir, args.headless)
     if args.login:
         await checkout.open_login_pages(products)
         return
+    if args.auto_checkout and not prompt_for_checkout_approval():
+        logging.getLogger(__name__).warning(
+            "Auto-checkout declined; browser automation is disabled for this run."
+        )
+        args.auto_checkout = False
     watcher = ProductWatcher(settings.request_timeout_seconds)
 
     checkout_tasks: dict = {}
@@ -59,8 +105,15 @@ async def run(args: argparse.Namespace) -> None:
             checkout_tasks.pop(product, None)
 
     async def on_available(result) -> None:
+        if args.dry_run:
+            logging.getLogger(__name__).warning(
+                "DRY RUN: %s is available at %s; no alert sent, no checkout opened.",
+                result.product.name,
+                result.product.url,
+            )
+            return
         await notifier.stock_available(result)
-        if not args.no_checkout and result.product not in checkout_tasks:
+        if args.auto_checkout and result.product not in checkout_tasks:
             # Run in the background so the 10-minute review window doesn't pause polling.
             checkout_tasks[result.product] = asyncio.create_task(run_checkout(result.product))
 

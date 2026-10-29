@@ -41,14 +41,28 @@ Sign in to each retailer once using the browser profile that the tool will reuse
 preorder-sniper --browser-data-dir .browser-profile --login
 ```
 
+Validate the live selectors before a long monitoring run:
+
+```powershell
+preorder-sniper --browser-data-dir .browser-profile --validate-selectors
+```
+
+This opens the configured retailer pages in the persistent browser profile, checks each saved selector
+against the live page, and reports missing selectors or captured anti-bot challenge pages without
+bypassing retailer protections.
+
 Then run the monitor:
 
 ```powershell
 preorder-sniper --browser-data-dir .browser-profile
 ```
 
+By default the monitor only sends alerts. Add `--auto-checkout` to opt in to browser automation, or
+`--dry-run` to only log availability (no alerts, no browser).
+
 When an availability marker appears, the tool logs and can send both SMS and webhook alerts,
-then adds the product to the cart and opens checkout in the saved browser profile for ten
+and, only when `--auto-checkout` is set, adds the product to the cart and opens checkout in the
+saved browser profile for ten
 minutes. It **requires explicit user approval before any final order submission** and does not
 bypass CAPTCHAs or queue rules. Review the order and place it manually when you are ready.
 
