@@ -26,6 +26,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--no-checkout", action="store_true", help="Alert only; do not open assisted checkout."
     )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Monitor and log availability only; send no alerts and open no browser.",
+    )
     return parser.parse_args()
 
 
@@ -59,6 +64,13 @@ async def run(args: argparse.Namespace) -> None:
             checkout_tasks.pop(product, None)
 
     async def on_available(result) -> None:
+        if args.dry_run:
+            logging.getLogger(__name__).warning(
+                "DRY RUN: %s is available at %s; no alert sent, no checkout opened.",
+                result.product.name,
+                result.product.url,
+            )
+            return
         await notifier.stock_available(result)
         if not args.no_checkout and result.product not in checkout_tasks:
             # Run in the background so the 10-minute review window doesn't pause polling.

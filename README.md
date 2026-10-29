@@ -47,6 +47,9 @@ Then run the monitor:
 preorder-sniper --browser-data-dir .browser-profile
 ```
 
+Use `--no-checkout` for alerts without browser automation, or `--dry-run` to only log
+availability (no alerts, no browser).
+
 When an availability marker appears, the tool logs and can send both SMS and webhook alerts,
 then adds the product to the cart and opens checkout in the saved browser profile for ten
 minutes. It **requires explicit user approval before any final order submission** and does not
