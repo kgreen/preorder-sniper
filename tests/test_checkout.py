@@ -7,13 +7,16 @@ from preorder_sniper.models import Product
 
 
 class DummyLocator:
-    def __init__(self, count: int):
+    def __init__(self, page, selector: str, count: int):
+        self.page = page
+        self.selector = selector
         self.count_value = count
         self.click_called = False
         self.first = self
 
     async def click(self, timeout: int | None = None):
         self.click_called = True
+        self.page.actions.append(self.selector)
 
     async def count(self):
         return self.count_value
@@ -26,7 +29,7 @@ class DummyPage:
 
     def locator(self, selector: str):
         if selector not in self.locators:
-            self.locators[selector] = DummyLocator(1)
+            self.locators[selector] = DummyLocator(self, selector, 1)
         return self.locators[selector]
 
     async def goto(self, *args, **kwargs):
@@ -88,6 +91,12 @@ def test_assisted_checkout_pauses_before_submit(monkeypatch):
 
     asyncio.run(checkout.run(product))
 
-    assert page.actions == ["goto", "bring_to_front", "wait_for_timeout"]
+    assert page.actions == [
+        "goto",
+        "#add-to-cart",
+        "#checkout",
+        "bring_to_front",
+        "wait_for_timeout",
+    ]
     assert page.locators["#add-to-cart"].click_called is True
     assert page.locators["#checkout"].click_called is True

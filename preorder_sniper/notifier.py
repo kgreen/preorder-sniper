@@ -33,10 +33,16 @@ class Notifier:
         logger.warning(message)
 
         if self._webhook_url:
-            await self._send_webhook(message)
+            try:
+                await self._send_webhook(message)
+            except Exception:
+                logger.exception("Webhook notification failed for %s.", result.product.name)
 
         if self._sms_to_number and self._sms_from_number and self._twilio_account_sid and self._twilio_auth_token:
-            await self._send_sms(message)
+            try:
+                await self._send_sms(message)
+            except Exception:
+                logger.exception("SMS notification failed for %s.", result.product.name)
 
     async def _send_webhook(self, message: str) -> None:
         async with httpx.AsyncClient(timeout=10) as client:

@@ -21,7 +21,7 @@
 ### Tests
 
 - [x] T009 [P] Add unit tests for selector matching and configuration validation.
-- [ ] T010 [P] Add a smoke test that covers the watcher loop and a known available product signal.
+- [x] T010 [P] Add a smoke test that covers the watcher loop and a known available product signal.
 
 ### Implementation
 
