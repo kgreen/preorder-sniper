@@ -12,6 +12,7 @@ class DummyLocator:
         self.selector = selector
         self.count_value = count
         self.click_called = False
+        self.count_calls = 0
         self.first = self
 
     async def click(self, timeout: int | None = None):
@@ -19,6 +20,8 @@ class DummyLocator:
         self.page.actions.append(self.selector)
 
     async def count(self):
+        self.count_calls += 1
+        self.page.actions.append(f"count:{self.selector}")
         return self.count_value
 
 
@@ -34,6 +37,9 @@ class DummyPage:
 
     async def goto(self, *args, **kwargs):
         self.actions.append("goto")
+
+    async def content(self):
+        return "<html><body><button id='available'></button></body></html>"
 
     async def bring_to_front(self):
         self.actions.append("bring_to_front")
@@ -101,8 +107,6 @@ def test_assisted_checkout_pauses_before_submit(monkeypatch):
     assert page.locators["#add-to-cart"].click_called is True
     assert page.locators["#checkout"].click_called is True
 
-
-def test_assisted_checkout_raises_when_click_target_is_missing(monkeypatch):
     product = Product(
         retailer="amazon",
         name="Test Product",
@@ -127,3 +131,30 @@ def test_assisted_checkout_raises_when_click_target_is_missing(monkeypatch):
         assert False, "TimeoutError was expected"
     except TimeoutError:
         pass
+
+
+def test_validate_products_checks_live_selectors_without_clicking(monkeypatch):
+    product = Product(
+        retailer="amazon",
+        name="Test Product",
+        url="https://example.com/product",
+        available_selector="#available",
+        add_to_cart_selector="#add-to-cart",
+        checkout_selector="#checkout",
+    )
+    page = DummyPage()
+    page.locators["#add-to-cart"] = DummyLocator(page, "#add-to-cart", 1)
+    page.locators["#checkout"] = DummyLocator(page, "#checkout", 1)
+    checkout = AssistedCheckout(browser_data_dir="/tmp/profile")
+
+    monkeypatch.setattr("preorder_sniper.checkout.async_playwright", lambda: DummyPlaywright(DummyContext(page)))
+    monkeypatch.setattr("preorder_sniper.checkout.is_block_page", lambda html: False)
+
+    asyncio.run(checkout.validate_products([product]))
+
+    assert page.locators["#available"].count_calls == 1
+    assert page.locators["#add-to-cart"].count_calls == 1
+    assert page.locators["#checkout"].count_calls == 1
+    assert page.actions[0] == "goto"
+    assert "count:#available" in page.actions
+
