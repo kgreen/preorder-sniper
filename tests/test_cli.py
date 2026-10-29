@@ -11,7 +11,7 @@ PRODUCT = Product("amazon", "P", "https://example.com", "#a", "#b", "#c")
 def _args(**overrides):
     values = dict(
         products="p.json", browser_data_dir="profile", headless=True, login=False,
-        no_checkout=False, dry_run=False,
+        auto_checkout=False, dry_run=False,
     )
     values.update(overrides)
     return argparse.Namespace(**values)
@@ -62,13 +62,13 @@ def test_dry_run_sends_no_alert_and_opens_no_checkout(monkeypatch, caplog):
     assert "DRY RUN" in caplog.text
 
 
-def test_default_run_alerts_and_starts_checkout(monkeypatch):
-    calls = _run_with_available_product(monkeypatch, _args())
+def test_auto_checkout_alerts_and_starts_checkout(monkeypatch):
+    calls = _run_with_available_product(monkeypatch, _args(auto_checkout=True))
 
     assert calls == {"alerts": 1, "checkouts": 1}
 
 
-def test_no_checkout_alerts_without_browser(monkeypatch):
-    calls = _run_with_available_product(monkeypatch, _args(no_checkout=True))
+def test_default_run_alerts_without_browser(monkeypatch):
+    calls = _run_with_available_product(monkeypatch, _args())
 
     assert calls == {"alerts": 1, "checkouts": 0}

@@ -24,7 +24,9 @@ def parse_args() -> argparse.Namespace:
         help="Open the retailer pages for five minutes so you can sign in to the saved profile.",
     )
     parser.add_argument(
-        "--no-checkout", action="store_true", help="Alert only; do not open assisted checkout."
+        "--auto-checkout",
+        action="store_true",
+        help="Opt in: add to cart and open checkout when stock appears (never submits an order).",
     )
     parser.add_argument(
         "--dry-run",
@@ -72,7 +74,7 @@ async def run(args: argparse.Namespace) -> None:
             )
             return
         await notifier.stock_available(result)
-        if not args.no_checkout and result.product not in checkout_tasks:
+        if args.auto_checkout and result.product not in checkout_tasks:
             # Run in the background so the 10-minute review window doesn't pause polling.
             checkout_tasks[result.product] = asyncio.create_task(run_checkout(result.product))
 

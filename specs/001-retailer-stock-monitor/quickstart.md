@@ -10,6 +10,6 @@
 ## Commands
 
 ```powershell
-uv run python -m preorder_sniper.cli --products products.json --browser-data-dir .browser-profile --no-checkout
 uv run python -m preorder_sniper.cli --products products.json --browser-data-dir .browser-profile
+uv run python -m preorder_sniper.cli --products products.json --browser-data-dir .browser-profile --auto-checkout
 ```
