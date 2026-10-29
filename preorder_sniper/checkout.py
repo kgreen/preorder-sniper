@@ -40,10 +40,11 @@ class AssistedCheckout:
 
     async def _click_if_present(self, page, selector: str, action_name: str) -> None:
         locator = page.locator(selector)
-        if await locator.count() == 0:
+        try:
+            await locator.click(timeout=10_000)
+        except TimeoutError:
             logger.warning("No matching %s selector was found for %s.", action_name, selector)
-            return
-        await locator.first.click(timeout=10_000)
+            raise
 
     async def _pause_for_manual_review(self, page) -> None:
         await page.bring_to_front()
