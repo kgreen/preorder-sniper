@@ -22,5 +22,13 @@
     "available_selector": ".add-to-cart-button",
     "add_to_cart_selector": ".add-to-cart-button",
     "checkout_selector": ".checkout-buttons__checkout"
+  },
+  {
+    "retailer": "walmart",
+    "name": "Nintendo Switch OLED Model",
+    "url": "https://www.walmart.com/ip/0000000000000",
+    "available_selector": "[data-automation-id='add-to-cart-button'], button[data-testid='add-to-cart-button']",
+    "add_to_cart_selector": "[data-automation-id='add-to-cart-button'], button[data-testid='add-to-cart-button']",
+    "checkout_selector": "[data-automation-id='checkout-button'], button[data-automation-id='proceed-to-checkout']"
   }
 ]

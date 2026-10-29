@@ -1,7 +1,7 @@
 # preorder-sniper
 
-Single-user stock watcher and assisted checkout for limited preorders at Amazon, Target, and
-Best Buy.
+Single-user stock watcher and assisted checkout for limited preorders at Amazon, Target,
+Best Buy, and Walmart.
 
 ## Setup
 
@@ -27,13 +27,20 @@ For each retailer item, keep the `url`, `available_selector`, `add_to_cart_selec
 representative retailer URL shapes as a starting point, but a valid monitor must be updated to the
 specific product page and selector values for the item you are tracking.
 
+Walmart is included in the sample configuration as an explicit retailer target, but its selectors are
+still likely to need page-specific validation. In practice, Walmart product pages often use
+`data-automation-id` or `data-testid` markup, and they can also challenge automated requests.
+Before enabling a Walmart run, confirm the live page still contains the configured selectors with
+`--validate-selectors` and keep the project's no-bypass safety policy intact.
+
 **Known limitation:** the watcher polls pages over plain HTTP, and retailers may block or
 challenge that traffic. In a 2026-10-29 check, Amazon returned a CAPTCHA page (logged as
 `served an anti-bot challenge page` rather than "not available"), Best Buy timed out, and the
-sample Target URL returned 404. The tool does not bypass these protections. If a retailer
-blocks plain requests, rely on its own in-stock notifications for that item or use the
-alert-only flow with a different availability source. Sample URLs in `products.example.json`
-may be stale, so always use a current product URL.
+sample Target URL returned 404. Walmart should be treated the same way: validate against the live
+page and do not attempt to bypass anti-bot protections. If a retailer blocks plain requests, rely
+on its own in-stock notifications for that item or use the alert-only flow with a different
+availability source. Sample URLs in `products.example.json` may be stale, so always use a current
+product URL.
 
 Sign in to each retailer once using the browser profile that the tool will reuse:
 
