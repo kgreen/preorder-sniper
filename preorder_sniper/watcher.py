@@ -29,9 +29,23 @@ class ProductWatcher:
     async def check(self, product: Product) -> StockResult:
         response = await self._client.get(product.url)
         response.raise_for_status()
+        if is_block_page(response.text):
+            raise BlockedError(f"{product.retailer} served an anti-bot challenge page")
         available = selector_matches_html(product.available_selector, response.text)
         detail = "availability marker found" if available else "availability marker not found"
         return StockResult(product=product, available=available, detail=detail)
+
+
+class BlockedError(RuntimeError):
+    """The retailer returned an anti-bot challenge instead of the product page."""
+
+
+BLOCK_PAGE_MARKERS = ("/errors/validatecaptcha",)
+
+
+def is_block_page(html: str) -> bool:
+    lowered = html.lower()
+    return any(marker in lowered for marker in BLOCK_PAGE_MARKERS)
 
 
 def selector_marker(selector: str) -> str:
