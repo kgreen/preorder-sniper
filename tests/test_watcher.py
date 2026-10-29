@@ -7,6 +7,7 @@ import pytest
 
 from preorder_sniper.models import Product, StockResult
 from preorder_sniper.watcher import (
+    is_block_page,
     rate_limit_delay,
     selector_marker,
     selector_matches_html,
@@ -70,6 +71,11 @@ def test_watch_forever_skips_product_during_429_backoff(monkeypatch):
         asyncio.run(watch_forever(DummyWatcher(), [product], 1, 0, None))
 
     assert checks == 1
+
+
+def test_is_block_page_detects_amazon_captcha_only():
+    assert is_block_page('<form action="/errors/validateCaptcha">')
+    assert not is_block_page('<script>var captcha = false;</script><div id="available"></div>')
 
 
 def test_watch_forever_retries_failed_callback(monkeypatch):
