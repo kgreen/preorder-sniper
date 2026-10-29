@@ -21,6 +21,7 @@ preorder-sniper = "preorder_sniper.cli:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "--basetemp=.pytest_tmp -p no:cacheprovider"
 
 [tool.ruff]
 line-length = 100
