@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
+import sys
 from pathlib import Path
 
 from .checkout import AssistedCheckout
@@ -36,9 +37,28 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def prompt_for_checkout_approval() -> bool:
+    if not sys.stdin.isatty():
+        logging.getLogger(__name__).warning(
+            "Auto-checkout approval skipped because stdin is not interactive; checkout was not started."
+        )
+        return False
+    response = input(
+        "Approve opening the saved retailer browser session to add to cart and open checkout? [y/N]: "
+    ).strip().lower()
+    return response in {"y", "yes"}
+
+
 async def run(args: argparse.Namespace) -> None:
     settings = load_settings()
     products = load_products(args.products)
+
+    if args.dry_run:
+        args.auto_checkout = False
+    if args.dry_run and args.login:
+        logging.getLogger(__name__).warning("DRY RUN: skipping login workflow so no browser pages are opened.")
+        return
+
     notifier = Notifier(
         settings.webhook_url,
         settings.sms_to_number,
@@ -50,6 +70,11 @@ async def run(args: argparse.Namespace) -> None:
     if args.login:
         await checkout.open_login_pages(products)
         return
+    if args.auto_checkout and not prompt_for_checkout_approval():
+        logging.getLogger(__name__).warning(
+            "Auto-checkout declined; browser automation is disabled for this run."
+        )
+        args.auto_checkout = False
     watcher = ProductWatcher(settings.request_timeout_seconds)
 
     checkout_tasks: dict = {}
