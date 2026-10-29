@@ -18,7 +18,8 @@ Copy-Item products.example.json products.json
 
 Replace the placeholder URLs in `products.json` with the exact product pages. Selectors can
 change without notice; use each retailer's product page and browser developer tools to confirm
-them before a release.
+them before a release. The app validates product URLs and polling settings before the watcher
+starts, and it supports either webhook alerts, SMS alerts, or both at the same time.
 
 Sign in to each retailer once using the browser profile that the tool will reuse:
 
@@ -32,10 +33,10 @@ Then run the monitor:
 preorder-sniper --browser-data-dir .browser-profile
 ```
 
-When an availability marker appears, the tool logs and optionally posts a webhook alert, adds
-the product to the cart, and opens checkout in the saved browser profile for ten minutes. It
-**never submits an order**, handles CAPTCHAs, or bypasses queues. Review the order and place it
-manually.
+When an availability marker appears, the tool logs and can send both SMS and webhook alerts,
+then adds the product to the cart and opens checkout in the saved browser profile for ten
+minutes. It **requires explicit user approval before any final order submission** and does not
+bypass CAPTCHAs or queue rules. Review the order and place it manually when you are ready.
 
 Use the retailer sites in accordance with their terms. Keep `products.json`, `.env`, and the
 browser profile private; do not store credentials or payment details in this repository.

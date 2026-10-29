@@ -32,7 +32,13 @@ def parse_args() -> argparse.Namespace:
 async def run(args: argparse.Namespace) -> None:
     settings = load_settings()
     products = load_products(args.products)
-    notifier = Notifier(settings.webhook_url)
+    notifier = Notifier(
+        settings.webhook_url,
+        settings.sms_to_number,
+        settings.sms_from_number,
+        settings.twilio_account_sid,
+        settings.twilio_auth_token,
+    )
     checkout = AssistedCheckout(args.browser_data_dir, args.headless)
     if args.login:
         await checkout.open_login_pages(products)
