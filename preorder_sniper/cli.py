@@ -46,10 +46,13 @@ async def run(args: argparse.Namespace) -> None:
     watcher = ProductWatcher(settings.request_timeout_seconds)
 
     checkout_tasks: dict = {}
+    # All checkouts share one persistent browser profile, which Chromium locks per process.
+    profile_lock = asyncio.Lock()
 
     async def run_checkout(product) -> None:
         try:
-            await checkout.run(product)
+            async with profile_lock:
+                await checkout.run(product)
         except Exception:
             logging.getLogger(__name__).exception("Assisted checkout failed for %s", product.name)
         finally:

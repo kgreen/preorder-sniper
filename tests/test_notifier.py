@@ -1,5 +1,7 @@
 import asyncio
 
+import httpx
+
 from preorder_sniper.models import Product, StockResult
 from preorder_sniper.notifier import Notifier
 
@@ -62,3 +64,43 @@ def test_notifier_sends_webhook_and_sms(monkeypatch):
     assert clients[1].calls[0]["url"].startswith("https://api.twilio.com/")
     assert clients[1].calls[0]["data"]["To"] == "+15555550123"
     assert clients[1].calls[0]["data"]["From"] == "+15555550124"
+
+
+def test_notifier_continues_after_channel_failure(monkeypatch):
+    product = Product(
+        retailer="amazon",
+        name="Metroid Ravenous: Special Edition",
+        url="https://example.com/product",
+        available_selector="#add-to-cart-button",
+        add_to_cart_selector="#add-to-cart-button",
+        checkout_selector="#checkout",
+    )
+    result = StockResult(product=product, available=True, detail="availability marker found")
+
+    class FailingWebhookClient(DummyClient):
+        async def post(self, url, **kwargs):
+            if url == "https://example.com/hook":
+                raise httpx.HTTPError("webhook outage")
+            return await super().post(url, **kwargs)
+
+    clients = []
+
+    def fake_async_client(*args, **kwargs):
+        client = FailingWebhookClient(*args, **kwargs)
+        clients.append(client)
+        return client
+
+    monkeypatch.setattr("preorder_sniper.notifier.httpx.AsyncClient", fake_async_client)
+    notifier = Notifier(
+        webhook_url="https://example.com/hook",
+        sms_to_number="+15555550123",
+        sms_from_number="+15555550124",
+        twilio_account_sid="sid",
+        twilio_auth_token="token",
+    )
+
+    asyncio.run(notifier.stock_available(result))
+
+    assert len(clients) == 2
+    assert clients[0].calls == []
+    assert clients[1].calls[0]["data"]["To"] == "+15555550123"

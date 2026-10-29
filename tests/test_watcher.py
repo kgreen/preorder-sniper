@@ -1,4 +1,6 @@
 import asyncio
+from datetime import datetime, timedelta, timezone
+from email.utils import format_datetime
 
 import httpx
 import pytest
@@ -38,6 +40,8 @@ def _status_error(code, headers=None):
 def test_rate_limit_delay_honors_retry_after_and_ignores_other_errors():
     assert rate_limit_delay(_status_error(429, {"Retry-After": "30"}), 5) == 30
     assert rate_limit_delay(_status_error(429), 5) == 30
+    future = format_datetime(datetime.now(timezone.utc) + timedelta(seconds=300), usegmt=True)
+    assert 290 <= rate_limit_delay(_status_error(429, {"Retry-After": future}), 5) <= 300
     assert rate_limit_delay(_status_error(500), 5) == 0
     assert rate_limit_delay(RuntimeError("x"), 5) == 0
 

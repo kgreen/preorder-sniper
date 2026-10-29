@@ -56,13 +56,13 @@ EXAMPLES:
 # Source common functions
 . "$PSScriptRoot/common.ps1"
 
-# Get feature paths.
-# In -PathsOnly mode this is pure resolution, so pass -NoPersist to opt out of
-# the feature.json write side effect (issue #3025).
+# Get feature paths without mutating the pinned feature state. Validation and
+# diagnostics must stay read-only so they do not overwrite a feature selection
+# from another branch or feature directory (issue #3025).
 if ($PathsOnly) {
     $paths = Get-FeaturePathsEnv -NoPersist
 } else {
-    $paths = Get-FeaturePathsEnv
+    $paths = Get-FeaturePathsEnv -NoPersist
 }
 
 # If paths-only mode, output paths and exit (no validation)

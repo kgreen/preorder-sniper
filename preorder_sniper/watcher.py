@@ -5,6 +5,8 @@ import logging
 import random
 import re
 import time
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 
 import httpx
 
@@ -63,7 +65,10 @@ def rate_limit_delay(error: Exception, interval_seconds: float) -> float:
     try:
         delay = float(retry_after)
     except ValueError:
-        delay = interval_seconds * 6
+        try:
+            delay = (parsedate_to_datetime(retry_after) - datetime.now(timezone.utc)).total_seconds()
+        except (TypeError, ValueError):
+            delay = interval_seconds * 6
     return min(max(delay, interval_seconds), 600.0)
 
 
