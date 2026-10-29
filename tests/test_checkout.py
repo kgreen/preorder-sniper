@@ -107,6 +107,31 @@ def test_assisted_checkout_pauses_before_submit(monkeypatch):
     assert page.locators["#add-to-cart"].click_called is True
     assert page.locators["#checkout"].click_called is True
 
+    product = Product(
+        retailer="amazon",
+        name="Test Product",
+        url="https://example.com/product",
+        available_selector="#available",
+        add_to_cart_selector="#missing-add-to-cart",
+        checkout_selector="#checkout",
+    )
+    page = DummyPage()
+
+    class FailingLocator(DummyLocator):
+        async def click(self, timeout: int | None = None):
+            raise TimeoutError("selector timed out")
+
+    page.locators["#missing-add-to-cart"] = FailingLocator(page, "#missing-add-to-cart", 1)
+    checkout = AssistedCheckout(browser_data_dir="/tmp/profile")
+
+    monkeypatch.setattr("preorder_sniper.checkout.async_playwright", lambda: DummyPlaywright(DummyContext(page)))
+
+    try:
+        asyncio.run(checkout.run(product))
+        assert False, "TimeoutError was expected"
+    except TimeoutError:
+        pass
+
 
 def test_validate_products_checks_live_selectors_without_clicking(monkeypatch):
     product = Product(
@@ -132,3 +157,4 @@ def test_validate_products_checks_live_selectors_without_clicking(monkeypatch):
     assert page.locators["#checkout"].count_calls == 1
     assert page.actions[0] == "goto"
     assert "count:#available" in page.actions
+
