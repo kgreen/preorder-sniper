@@ -16,10 +16,16 @@ Copy-Item .env.example .env
 Copy-Item products.example.json products.json
 ```
 
-Replace the placeholder URLs in `products.json` with the exact product pages. Selectors can
-change without notice; use each retailer's product page and browser developer tools to confirm
-them before a release. The app validates product URLs and polling settings before the watcher
-starts, and it supports either webhook alerts, SMS alerts, or both at the same time.
+Replace the sample URLs in `products.json` with the exact product pages you want to monitor.
+Selectors can change without notice, so use each retailer's live product page and the browser's
+Developer Tools to confirm the exact CSS selectors before a release. The app validates product
+URLs and polling settings before the watcher starts, and it supports either webhook alerts, SMS
+alerts, or both at the same time.
+
+For each retailer item, keep the `url`, `available_selector`, `add_to_cart_selector`, and
+`checkout_selector` aligned to the current page markup. The included `products.example.json` uses
+representative retailer URL shapes as a starting point, but a valid monitor must be updated to the
+specific product page and selector values for the item you are tracking.
 
 Sign in to each retailer once using the browser profile that the tool will reuse:
 

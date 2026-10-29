@@ -1,24 +1,24 @@
 [
   {
     "retailer": "amazon",
-    "name": "Metroid Ravenous: Special Edition",
-    "url": "https://www.amazon.com/dp/REPLACE_WITH_ASIN",
+    "name": "Nintendo Switch OLED Model",
+    "url": "https://www.amazon.com/dp/B0C3P9KXNS",
     "available_selector": "#add-to-cart-button",
     "add_to_cart_selector": "#add-to-cart-button",
     "checkout_selector": "input[name='proceedToRetailCheckout']"
   },
   {
     "retailer": "target",
-    "name": "Metroid Ravenous: Special Edition",
-    "url": "https://www.target.com/p/REPLACE_WITH_DPCI",
+    "name": "Nintendo Switch OLED Model",
+    "url": "https://www.target.com/p/nintendo-switch-oled-model/-/A-86457158",
     "available_selector": "[data-test='shipItButton']",
     "add_to_cart_selector": "[data-test='shipItButton']",
     "checkout_selector": "[data-test='checkout-button']"
   },
   {
     "retailer": "bestbuy",
-    "name": "Metroid Ravenous: Special Edition",
-    "url": "https://www.bestbuy.com/site/REPLACE_WITH_SKU.p",
+    "name": "Nintendo Switch OLED Model",
+    "url": "https://www.bestbuy.com/site/nintendo-switch-oled-model/6510000.p?skuId=6510000",
     "available_selector": ".add-to-cart-button",
     "add_to_cart_selector": ".add-to-cart-button",
     "checkout_selector": ".checkout-buttons__checkout"

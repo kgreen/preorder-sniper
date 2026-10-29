@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from playwright.async_api import async_playwright
 
 from .models import Product
+
+logger = logging.getLogger(__name__)
 
 
 class AssistedCheckout:
@@ -13,7 +16,7 @@ class AssistedCheckout:
         self._headless = headless
 
     async def run(self, product: Product) -> None:
-        """Add the product to cart and open checkout; never submit an order."""
+        """Attempt add-to-cart then pause at checkout for manual review; never submit an order."""
         async with async_playwright() as playwright:
             context = await playwright.chromium.launch_persistent_context(
                 str(self._browser_data_dir),
@@ -22,12 +25,33 @@ class AssistedCheckout:
             page = await context.new_page()
             try:
                 await page.goto(product.url, wait_until="domcontentloaded")
-                await page.locator(product.add_to_cart_selector).click(timeout=10_000)
-                await page.locator(product.checkout_selector).click(timeout=10_000)
-                await page.bring_to_front()
-                await page.wait_for_timeout(600_000)
+
+                await self._click_if_present(page, product.add_to_cart_selector, "add to cart")
+                await self._click_if_present(page, product.checkout_selector, "checkout")
+
+                logger.warning(
+                    "Checkout reached for %s at %s. Pausing for manual review before any order submission.",
+                    product.name,
+                    product.url,
+                )
+                await self._pause_for_manual_review(page)
             finally:
                 await context.close()
+
+    async def _click_if_present(self, page, selector: str, action_name: str) -> None:
+        locator = page.locator(selector)
+        if await locator.count() == 0:
+            logger.warning("No matching %s selector was found for %s.", action_name, selector)
+            return
+        await locator.first.click(timeout=10_000)
+
+    async def _pause_for_manual_review(self, page) -> None:
+        await page.bring_to_front()
+        logger.warning(
+            "Manual approval required before final purchase submission."
+            " The browser is intentionally left at checkout and no submit action is triggered."
+        )
+        await page.wait_for_timeout(600_000)
 
     async def open_login_pages(self, products: list[Product]) -> None:
         """Open retailer pages in the persistent profile for a manual sign-in."""
