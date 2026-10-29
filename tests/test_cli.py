@@ -62,6 +62,33 @@ def test_dry_run_sends_no_alert_and_opens_no_checkout(monkeypatch, caplog):
     assert "DRY RUN" in caplog.text
 
 
+def test_dry_run_skips_login_flow(monkeypatch, caplog):
+    seen = {"opened": False}
+
+    class FakeCheckout:
+        async def open_login_pages(self, products):
+            seen["opened"] = True
+
+    monkeypatch.setattr(cli, "load_settings", lambda: type("Settings", (), {
+        "webhook_url": None,
+        "sms_to_number": None,
+        "sms_from_number": None,
+        "twilio_account_sid": None,
+        "twilio_auth_token": None,
+    })())
+    monkeypatch.setattr(cli, "load_products", lambda path: [PRODUCT])
+    monkeypatch.setattr(cli, "AssistedCheckout", lambda *a, **k: FakeCheckout())
+    monkeypatch.setattr(cli, "Notifier", lambda *a, **k: None)
+    monkeypatch.setattr(cli, "ProductWatcher", lambda *a, **k: (_ for _ in ()).throw(AssertionError("watcher should not run")))
+    monkeypatch.setattr(cli, "watch_forever", lambda *a, **k: (_ for _ in ()).throw(AssertionError("watcher should not run")))
+
+    with caplog.at_level(logging.WARNING):
+        asyncio.run(cli.run(_args(login=True, dry_run=True)))
+
+    assert seen["opened"] is False
+    assert "DRY RUN" in caplog.text
+
+
 def test_login_opens_pages_without_watcher(monkeypatch):
     seen = {}
 
@@ -91,6 +118,7 @@ def test_login_opens_pages_without_watcher(monkeypatch):
 
 
 def test_auto_checkout_alerts_and_starts_checkout(monkeypatch):
+    monkeypatch.setattr(cli, "prompt_for_checkout_approval", lambda: True)
     calls = _run_with_available_product(monkeypatch, _args(auto_checkout=True))
 
     assert calls == {"alerts": 1, "checkouts": 1}
@@ -121,8 +149,9 @@ def test_auto_checkout_logs_background_failures(monkeypatch, caplog):
     async def fake_watch(watcher, products, interval, jitter, on_available):
         await on_available(StockResult(PRODUCT, True, "found"))
         for _ in range(5):
-            await asyncio.sleep(0)
+            await asyncio.sleep(0.01)
 
+    monkeypatch.setattr(cli, "prompt_for_checkout_approval", lambda: True)
     monkeypatch.setattr(cli, "load_products", lambda path: [PRODUCT])
     monkeypatch.setattr(cli, "load_settings", lambda: type("Settings", (), {
         "webhook_url": None,
