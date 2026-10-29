@@ -16,6 +16,7 @@ def _args(**overrides):
         login=False,
         auto_checkout=False,
         dry_run=False,
+        validate_selectors=False,
     )
     values.update(overrides)
     return argparse.Namespace(**values)
@@ -176,6 +177,34 @@ def test_auto_checkout_logs_background_failures(monkeypatch, caplog):
         asyncio.run(cli.run(_args(auto_checkout=True)))
 
     assert "Assisted checkout failed for P" in caplog.text
+
+
+def test_validate_selectors_runs_browser_validation_and_exits(monkeypatch):
+    seen = {}
+
+    class FakeCheckout:
+        def __init__(self, *a, **k):
+            pass
+
+        async def validate_products(self, products):
+            seen["products"] = products
+
+    monkeypatch.setattr(cli, "load_settings", lambda: type("Settings", (), {
+        "webhook_url": None,
+        "sms_to_number": None,
+        "sms_from_number": None,
+        "twilio_account_sid": None,
+        "twilio_auth_token": None,
+    })())
+    monkeypatch.setattr(cli, "load_products", lambda path: [PRODUCT])
+    monkeypatch.setattr(cli, "AssistedCheckout", FakeCheckout)
+    monkeypatch.setattr(cli, "Notifier", lambda *a, **k: (_ for _ in ()).throw(AssertionError("notifier should not run")))
+    monkeypatch.setattr(cli, "ProductWatcher", lambda *a, **k: (_ for _ in ()).throw(AssertionError("watcher should not run")))
+    monkeypatch.setattr(cli, "watch_forever", lambda *a, **k: (_ for _ in ()).throw(AssertionError("watcher should not run")))
+
+    asyncio.run(cli.run(_args(validate_selectors=True)))
+
+    assert seen["products"] == [PRODUCT]
 
 
 def test_default_run_alerts_without_browser(monkeypatch):

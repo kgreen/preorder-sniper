@@ -34,6 +34,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Monitor and log availability only; send no alerts and open no browser.",
     )
+    parser.add_argument(
+        "--validate-selectors",
+        action="store_true",
+        help="Open each configured retailer page in the persistent browser and confirm the configured selectors still match the live page without bypassing anti-bot protections.",
+    )
     return parser.parse_args()
 
 
@@ -59,6 +64,16 @@ async def run(args: argparse.Namespace) -> None:
         logging.getLogger(__name__).warning("DRY RUN: skipping login workflow so no browser pages are opened.")
         return
 
+    checkout = AssistedCheckout(args.browser_data_dir, args.headless)
+    if args.validate_selectors:
+        if args.dry_run:
+            logging.getLogger(__name__).warning(
+                "DRY RUN: selector validation requires a browser session; skipping without opening pages."
+            )
+            return
+        await checkout.validate_products(products)
+        return
+
     notifier = Notifier(
         settings.webhook_url,
         settings.sms_to_number,
@@ -66,7 +81,6 @@ async def run(args: argparse.Namespace) -> None:
         settings.twilio_account_sid,
         settings.twilio_auth_token,
     )
-    checkout = AssistedCheckout(args.browser_data_dir, args.headless)
     if args.login:
         await checkout.open_login_pages(products)
         return

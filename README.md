@@ -41,6 +41,16 @@ Sign in to each retailer once using the browser profile that the tool will reuse
 preorder-sniper --browser-data-dir .browser-profile --login
 ```
 
+Validate the live selectors before a long monitoring run:
+
+```powershell
+preorder-sniper --browser-data-dir .browser-profile --validate-selectors
+```
+
+This opens the configured retailer pages in the persistent browser profile, checks each saved selector
+against the live page, and reports missing selectors or captured anti-bot challenge pages without
+bypassing retailer protections.
+
 Then run the monitor:
 
 ```powershell
