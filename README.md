@@ -27,6 +27,14 @@ For each retailer item, keep the `url`, `available_selector`, `add_to_cart_selec
 representative retailer URL shapes as a starting point, but a valid monitor must be updated to the
 specific product page and selector values for the item you are tracking.
 
+**Known limitation:** the watcher polls pages over plain HTTP, and retailers may block or
+challenge that traffic. In a 2026-10-29 check, Amazon returned a CAPTCHA page (logged as
+`served an anti-bot challenge page` rather than "not available"), Best Buy timed out, and the
+sample Target URL returned 404. The tool does not bypass these protections. If a retailer
+blocks plain requests, rely on its own in-stock notifications for that item or use the
+alert-only flow with a different availability source. Sample URLs in `products.example.json`
+may be stale, so always use a current product URL.
+
 Sign in to each retailer once using the browser profile that the tool will reuse:
 
 ```powershell
