@@ -72,7 +72,10 @@ async def watch_forever(
                 continue
             if result.available and product not in seen_available:
                 seen_available.add(product)
-                await on_available(result)
+                try:
+                    await on_available(result)
+                except Exception:
+                    logger.exception("Availability callback failed for %s", product.name)
             elif not result.available:
                 seen_available.discard(product)
         await asyncio.sleep(interval_seconds + random.uniform(0, jitter_seconds))
