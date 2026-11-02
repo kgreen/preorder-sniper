@@ -181,3 +181,29 @@ def test_other_retailers_use_http(monkeypatch):
     asyncio.run(_watcher(http).check(TARGET))
 
     assert http.checked == [TARGET] and launches == []
+
+
+def test_diagnose_reports_status_and_selector_match(monkeypatch):
+    _fake_playwright(monkeypatch, ["<html></html>"], response=FakeResponse(200))
+
+    diag = asyncio.run(_watcher().diagnose(AMAZON))
+
+    assert (diag.http_status, diag.challenge_detected, diag.selector_matched) == (200, False, True)
+    assert "available_selector_matched=yes" in diag.summary()
+
+
+def test_diagnose_reports_missing_selector(monkeypatch):
+    _fake_playwright(monkeypatch, ["<html></html>"], marker=False)
+
+    diag = asyncio.run(_watcher().diagnose(AMAZON))
+
+    assert diag.selector_matched is False and not diag.challenge_detected
+
+
+def test_diagnose_reports_challenge_without_checking_selector(monkeypatch):
+    _fake_playwright(monkeypatch, [AMAZON_CAPTCHA], response=FakeResponse(503))
+
+    diag = asyncio.run(_watcher().diagnose(AMAZON))
+
+    assert diag.challenge_detected and diag.selector_matched is None and diag.http_status == 503
+    assert "no bypass attempted" in diag.summary()

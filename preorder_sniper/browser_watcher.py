@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from dataclasses import dataclass
 from pathlib import Path
 
 import httpx
@@ -14,6 +15,25 @@ from .watcher import BlockedError, ProductWatcher, is_block_page
 logger = logging.getLogger(__name__)
 
 BROWSER_RETAILERS = frozenset({"amazon", "bestbuy"})
+
+
+@dataclass(frozen=True)
+class BrowserDiagnostic:
+    product: Product
+    http_status: int | None
+    challenge_detected: bool
+    selector_matched: bool | None  # None when a challenge page prevented the check
+
+    def summary(self) -> str:
+        if self.challenge_detected:
+            matched = "not checked (challenge page; stopped, no bypass attempted)"
+        else:
+            matched = "yes" if self.selector_matched else "no"
+        return (
+            f"{self.product.name} [{self.product.retailer}] http_status={self.http_status} "
+            f"challenge={'yes' if self.challenge_detected else 'no'} "
+            f"available_selector_matched={matched}"
+        )
 
 
 class BrowserBusyError(RuntimeError):
@@ -92,6 +112,34 @@ class BrowserWatcher:
                 await context.close()
         detail = "availability marker found" if available else "availability marker not found"
         return StockResult(product=product, available=available, detail=detail)
+
+    async def diagnose(self, product: Product) -> BrowserDiagnostic:
+        """One read-only page load for manual validation; never alerts or retries past a challenge."""
+        async with self._profile_lock:
+            async with async_playwright() as playwright:
+                context = await playwright.chromium.launch_persistent_context(
+                    str(self._browser_data_dir),
+                    headless=self._headless,
+                )
+                try:
+                    page = await context.new_page()
+                    response = await page.goto(
+                        product.url, wait_until="domcontentloaded", timeout=self._timeout_ms
+                    )
+                    status = response.status if response is not None else None
+                    if is_block_page(await page.content()):
+                        return BrowserDiagnostic(product, status, True, None)
+                    try:
+                        await page.locator(product.available_selector).first.wait_for(
+                            state="attached", timeout=self._render_timeout_ms
+                        )
+                        matched = True
+                    except PlaywrightTimeoutError:
+                        matched = False
+                    challenge = is_block_page(await page.content())
+                    return BrowserDiagnostic(product, status, challenge, None if challenge else matched)
+                finally:
+                    await context.close()
 
     @staticmethod
     def _raise_if_blocked(product: Product, html: str) -> None:

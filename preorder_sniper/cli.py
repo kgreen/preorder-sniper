@@ -6,7 +6,7 @@ import logging
 import sys
 from pathlib import Path
 
-from .browser_watcher import BrowserWatcher
+from .browser_watcher import BROWSER_RETAILERS, BrowserWatcher
 from .checkout import AssistedCheckout
 from .config import load_products, load_settings
 from .notifier import Notifier
@@ -45,6 +45,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Open each configured retailer page in the persistent browser and confirm the configured selectors still match the live page without bypassing anti-bot protections.",
     )
+    parser.add_argument(
+        "--browser-check-once",
+        action="store_true",
+        help="Diagnostic: load each Amazon/Best Buy page once in the persistent browser and report HTTP status, challenge detection, and selector match. Sends no alerts; never bypasses challenges.",
+    )
     return parser.parse_args()
 
 
@@ -58,6 +63,25 @@ def prompt_for_checkout_approval() -> bool:
         "Approve opening the saved retailer browser session to add to cart and open checkout? [y/N]: "
     ).strip().lower()
     return response in {"y", "yes"}
+
+
+async def run_browser_diagnostic(args: argparse.Namespace, settings, products) -> None:
+    log = logging.getLogger(__name__)
+    http_watcher = ProductWatcher(settings.request_timeout_seconds)
+    watcher = BrowserWatcher(
+        http_watcher, args.browser_data_dir, args.headless, None, settings.request_timeout_seconds * 3
+    )
+    try:
+        for product in products:
+            if product.retailer.lower() not in BROWSER_RETAILERS:
+                log.info("%s [%s]: skipped (browser check covers Amazon and Best Buy only)", product.name, product.retailer)
+                continue
+            try:
+                log.info("DIAGNOSTIC: %s", (await watcher.diagnose(product)).summary())
+            except Exception as exc:
+                log.error("DIAGNOSTIC: %s [%s] failed: %s", product.name, product.retailer, exc)
+    finally:
+        await watcher.close()
 
 
 async def run(args: argparse.Namespace) -> None:
@@ -78,6 +102,15 @@ async def run(args: argparse.Namespace) -> None:
             )
             return
         await checkout.validate_products(products)
+        return
+
+    if args.browser_check_once:
+        if args.dry_run:
+            logging.getLogger(__name__).warning(
+                "DRY RUN: browser diagnostic requires a browser session; skipping without opening pages."
+            )
+            return
+        await run_browser_diagnostic(args, settings, products)
         return
 
     notifier = Notifier(
