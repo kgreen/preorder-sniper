@@ -18,6 +18,7 @@ def _args(**overrides):
         dry_run=False,
         browser_check=False,
         validate_selectors=False,
+        browser_check_once=False,
     )
     values.update(overrides)
     return argparse.Namespace(**values)
@@ -277,3 +278,49 @@ def test_default_run_alerts_without_browser(monkeypatch):
     calls = _run_with_available_product(monkeypatch, _args())
 
     assert calls == {"alerts": 1, "checkouts": 0}
+
+
+def _diagnostic_setup(monkeypatch, products, diagnosed):
+    class FakeBrowserWatcher:
+        def __init__(self, *a):
+            pass
+
+        async def diagnose(self, product):
+            diagnosed.append(product)
+            return cli.BrowserDiagnostic(product, 200, False, True)
+
+        async def close(self):
+            pass
+
+    monkeypatch.setattr(cli, "load_settings", lambda: type("Settings", (), {
+        "request_timeout_seconds": 10,
+        "webhook_url": None,
+        "sms_to_number": None,
+        "sms_from_number": None,
+        "twilio_account_sid": None,
+        "twilio_auth_token": None,
+    })())
+    monkeypatch.setattr(cli, "load_products", lambda path: products)
+    monkeypatch.setattr(cli, "BrowserWatcher", FakeBrowserWatcher)
+    monkeypatch.setattr(cli, "ProductWatcher", lambda *a, **k: type("W", (), {"close": lambda self: asyncio.sleep(0)})())
+    monkeypatch.setattr(cli, "Notifier", lambda *a, **k: (_ for _ in ()).throw(AssertionError("no alerts")))
+    monkeypatch.setattr(cli, "watch_forever", lambda *a, **k: (_ for _ in ()).throw(AssertionError("no polling")))
+
+
+def test_browser_check_once_diagnoses_browser_retailers_only(monkeypatch):
+    other = Product("target", "T", "https://example.com/t", "#a", "#b", "#c")
+    diagnosed = []
+    _diagnostic_setup(monkeypatch, [PRODUCT, other], diagnosed)
+
+    asyncio.run(cli.run(_args(browser_check_once=True)))
+
+    assert diagnosed == [PRODUCT]
+
+
+def test_browser_check_once_dry_run_opens_nothing(monkeypatch):
+    diagnosed = []
+    _diagnostic_setup(monkeypatch, [PRODUCT], diagnosed)
+
+    asyncio.run(cli.run(_args(browser_check_once=True, dry_run=True)))
+
+    assert diagnosed == []

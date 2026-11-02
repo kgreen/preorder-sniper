@@ -82,6 +82,28 @@ normal backoff, and are skipped for that poll while the shared profile is busy (
 checkout, so keep the poll interval modest. `--dry-run` does not open a browser, so it ignores
 `--browser-check`.
 
+### Live validation of the browser check
+
+Use `--browser-check-once` to record how the live pages behave before relying on `--browser-check`.
+It loads each Amazon/Best Buy product once in your own persistent profile, then logs the HTTP status,
+whether a CAPTCHA/anti-bot page was detected, and whether `available_selector` matched. It sends no
+alerts, never retries, and never bypasses challenges (a challenge is only reported). Other retailers
+are skipped, and `--dry-run` opens no browser.
+
+```powershell
+preorder-sniper --browser-data-dir .browser-profile --browser-check-once
+```
+
+Manual checklist (record the output for each product):
+
+1. Run `--login` and sign in to Amazon / Best Buy in the saved profile; close that browser.
+2. Run `--browser-check-once` with a visible (non-`--headless`) browser.
+3. Confirm `http_status=200` and `challenge=no`. If `challenge=yes`, stop, solve it yourself in the
+   profile via `--login`, and wait before retrying; do not automate around it.
+4. Confirm `available_selector_matched=yes` on an in-stock page and `no` on an out-of-stock page.
+   If it is wrong, fix the selector in `products.json` (see `--validate-selectors`).
+5. Note date, retailer, status, challenge, and selector result in your validation notes.
+
 By default the monitor only sends alerts. Add `--auto-checkout` to opt in to browser automation, or
 `--dry-run` to only log availability (no alerts, no browser).
 

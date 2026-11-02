@@ -20,3 +20,7 @@ using my persistent Playwright profile, because plain HTTP polling is CAPTCHA-bl
 
 - Availability is reported from the live page's `available_selector` via Playwright.
 - Tests cover found, missing, CAPTCHA stop, and HTTP fallback for other retailers.
+
+## Live validation (issue #22)
+
+- FR-007: `--browser-check-once` loads each Amazon/Best Buy page once and logs HTTP status, challenge detection, and selector match; sends no alerts, never bypasses challenges, and is skipped under `--dry-run`.
