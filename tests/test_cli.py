@@ -16,6 +16,7 @@ def _args(**overrides):
         login=False,
         auto_checkout=False,
         dry_run=False,
+        browser_check=False,
         validate_selectors=False,
     )
     values.update(overrides)

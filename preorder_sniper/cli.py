@@ -6,6 +6,7 @@ import logging
 import sys
 from pathlib import Path
 
+from .browser_watcher import BrowserWatcher
 from .checkout import AssistedCheckout
 from .config import load_products, load_settings
 from .notifier import Notifier
@@ -33,6 +34,11 @@ def parse_args() -> argparse.Namespace:
         "--dry-run",
         action="store_true",
         help="Monitor and log availability only; send no alerts and open no browser.",
+    )
+    parser.add_argument(
+        "--browser-check",
+        action="store_true",
+        help="Opt in: check Amazon and Best Buy availability in the persistent browser profile instead of plain HTTP. Stops and reports if a CAPTCHA/anti-bot page appears.",
     )
     parser.add_argument(
         "--validate-selectors",
@@ -92,8 +98,12 @@ async def run(args: argparse.Namespace) -> None:
     watcher = ProductWatcher(settings.request_timeout_seconds)
 
     checkout_tasks: dict = {}
-    # All checkouts share one persistent browser profile, which Chromium locks per process.
+    # All browser use shares one persistent profile, which Chromium locks per process.
     profile_lock = asyncio.Lock()
+    if args.browser_check and not args.dry_run:
+        watcher = BrowserWatcher(
+            watcher, args.browser_data_dir, args.headless, profile_lock, settings.request_timeout_seconds * 3
+        )
 
     async def run_checkout(product) -> None:
         try:
