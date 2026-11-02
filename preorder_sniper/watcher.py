@@ -57,18 +57,41 @@ def selector_marker(selector: str) -> str:
     return selector
 
 
+def split_selector_list(selector: str) -> list[str]:
+    """Split a selector list at top-level commas, ignoring commas in quotes or brackets."""
+    parts, current, quote, depth = [], [], "", 0
+    for char in selector:
+        if quote:
+            if char == quote:
+                quote = ""
+        elif char in "'\"":
+            quote = char
+        elif char == "[":
+            depth += 1
+        elif char == "]":
+            depth = max(depth - 1, 0)
+        elif char == "," and depth == 0:
+            parts.append("".join(current).strip())
+            current = []
+            continue
+        current.append(char)
+    parts.append("".join(current).strip())
+    return [part for part in parts if part]
+
+
 def selector_matches_html(selector: str, html: str) -> bool:
-    if "," in selector:
-        parts = [part.strip() for part in selector.split(",")]
-        return any(selector_matches_html(part, html) for part in parts if part)
+    parts = split_selector_list(selector)
+    if len(parts) > 1:
+        return any(selector_matches_html(part, html) for part in parts)
     if selector.startswith("#"):
         pattern = rf"""\bid\s*=\s*["']{re.escape(selector[1:])}["']"""
     elif selector.startswith("."):
         class_name = re.escape(selector[1:])
         pattern = rf"""\bclass\s*=\s*["'][^"']*\b{class_name}\b[^"']*["']"""
-    elif match := re.fullmatch(r"[\w-]*\[([\w-]+)=['\"]([^'\"]+)['\"]\]", selector):
-        attribute, value = match.groups()
-        pattern = rf"""\b{re.escape(attribute)}\s*=\s*["']{re.escape(value)}["']"""
+    elif match := re.fullmatch(r"([\w-]*)\[([\w-]+)=['\"]([^'\"]+)['\"]\]", selector):
+        tag, attribute, value = match.groups()
+        attribute_pattern = rf"""\b{re.escape(attribute)}\s*=\s*["']{re.escape(value)}["']"""
+        pattern = rf"<{re.escape(tag)}\b[^>]*{attribute_pattern}" if tag else attribute_pattern
     else:
         return selector_marker(selector) in html
     return re.search(pattern, html, flags=re.IGNORECASE) is not None

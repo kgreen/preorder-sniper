@@ -40,6 +40,22 @@ def test_selector_matches_html_supports_walmart_selector_lists():
     assert not selector_matches_html(selector, '<button data-automation-id="notify-me"></button>')
 
 
+def test_selector_matches_html_keeps_commas_inside_quoted_values():
+    html = '<button data-label="red,blue"></button>'
+
+    assert selector_matches_html("[data-label='red,blue']", html)
+    assert selector_matches_html("#missing, [data-label='red,blue']", html)
+    assert not selector_matches_html("[data-label='red']", html)
+
+
+def test_selector_matches_html_keeps_tag_constraint():
+    selector = "button[data-testid='add-to-cart-button']"
+
+    assert selector_matches_html(selector, '<button class="x" data-testid="add-to-cart-button">')
+    assert not selector_matches_html(selector, '<div data-testid="add-to-cart-button"></div>')
+    assert not selector_matches_html(selector, '<buttonish data-testid="add-to-cart-button">')
+
+
 def _status_error(code, headers=None):
     request = httpx.Request("GET", "https://example.com")
     response = httpx.Response(code, headers=headers, request=request)
