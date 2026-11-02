@@ -64,6 +64,13 @@ Then run the monitor:
 preorder-sniper --browser-data-dir .browser-profile
 ```
 
+Amazon and Best Buy often challenge or time out plain HTTP polling. Add `--browser-check` to opt in to
+checking those two retailers in the persistent browser profile instead (other retailers still use
+HTTP). If a CAPTCHA or anti-bot page appears, the tool logs it and stops checking that product until
+restart; it never tries to bypass the challenge. Browser checks are slower and share the profile with
+checkout, so keep the poll interval modest. `--dry-run` does not open a browser, so it ignores
+`--browser-check`.
+
 By default the monitor only sends alerts. Add `--auto-checkout` to opt in to browser automation, or
 `--dry-run` to only log availability (no alerts, no browser).
 
