@@ -61,11 +61,32 @@ class Settings:
     sms_from_number: str | None
     twilio_account_sid: str | None
     twilio_auth_token: str | None
+    alert_cooldown_seconds: float = 300.0
+
+
+def _validate_sms(settings: Settings) -> None:
+    required = {
+        "SMS_TO_NUMBER": settings.sms_to_number,
+        "TWILIO_FROM_NUMBER": settings.sms_from_number,
+        "TWILIO_ACCOUNT_SID": settings.twilio_account_sid,
+        "TWILIO_AUTH_TOKEN": settings.twilio_auth_token,
+    }
+    provided = [name for name, value in required.items() if value]
+    if not provided:
+        return
+    missing = [name for name, value in required.items() if not value]
+    if missing:
+        raise ValueError(
+            "SMS alerts are partially configured; also set: " + ", ".join(missing) + "."
+        )
+    for name in ("SMS_TO_NUMBER", "TWILIO_FROM_NUMBER"):
+        if not re.fullmatch(r"\+[1-9]\d{6,14}", required[name]):
+            raise ValueError(f"{name} must be in E.164 format, for example +15555550123.")
 
 
 def load_settings() -> Settings:
     load_dotenv()
-    return Settings(
+    settings = Settings(
         poll_interval_seconds=_require_positive_number(
             os.getenv("POLL_INTERVAL_SECONDS", "5"), field_name="POLL_INTERVAL_SECONDS"
         ),
@@ -89,7 +110,12 @@ def load_settings() -> Settings:
             os.getenv("TWILIO_AUTH_TOKEN") or os.getenv("SMS_AUTH_TOKEN"),
             field_name="TWILIO_AUTH_TOKEN",
         ),
+        alert_cooldown_seconds=_require_non_negative_number(
+            os.getenv("ALERT_COOLDOWN_SECONDS", "300"), field_name="ALERT_COOLDOWN_SECONDS"
+        ),
     )
+    _validate_sms(settings)
+    return settings
 
 
 def load_products(path: Path) -> list[Product]:

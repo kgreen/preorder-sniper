@@ -82,6 +82,21 @@ normal backoff, and are skipped for that poll while the shared profile is busy (
 checkout, so keep the poll interval modest. `--dry-run` does not open a browser, so it ignores
 `--browser-check`.
 
+## Alerts
+
+Configure alerts in `.env` (see `.env.example`); use a webhook, SMS, or both.
+
+- `WEBHOOK_URL`: http(s) endpoint that receives a JSON `{"text": "..."}` POST.
+- SMS via Twilio needs all of `SMS_TO_NUMBER`, `TWILIO_FROM_NUMBER`, `TWILIO_ACCOUNT_SID`, and
+  `TWILIO_AUTH_TOKEN`. Numbers must be E.164 (e.g. `+15555550123`). A partial SMS setup or malformed
+  number fails at startup with an error naming the missing or invalid variable.
+- `ALERT_COOLDOWN_SECONDS` (default 300): repeat alerts for the same product are suppressed within
+  this window; `0` disables de-duplication.
+- Each request uses `REQUEST_TIMEOUT_SECONDS` and is retried up to 3 times with backoff on network
+  errors, HTTP 429, and 5xx. A failing channel never blocks the other channel or stops monitoring.
+- Logs never include the webhook URL, Twilio credentials, or response bodies, only the channel,
+  product, and error type or HTTP status.
+
 By default the monitor only sends alerts. Add `--auto-checkout` to opt in to browser automation, or
 `--dry-run` to only log availability (no alerts, no browser).
 

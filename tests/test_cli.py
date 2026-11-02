@@ -27,21 +27,21 @@ def _run_with_available_product(monkeypatch, args):
     calls = {"alerts": 0, "checkouts": 0}
 
     class FakeNotifier:
-        def __init__(self, *a):
+        def __init__(self, *a, **k):
             pass
 
         async def stock_available(self, result):
             calls["alerts"] += 1
 
     class FakeCheckout:
-        def __init__(self, *a):
+        def __init__(self, *a, **k):
             pass
 
         async def run(self, product):
             calls["checkouts"] += 1
 
     class FakeWatcher:
-        def __init__(self, *a):
+        def __init__(self, *a, **k):
             pass
 
         async def close(self):
@@ -81,6 +81,8 @@ def test_dry_run_skips_login_flow(monkeypatch, caplog):
         "sms_from_number": None,
         "twilio_account_sid": None,
         "twilio_auth_token": None,
+        "alert_cooldown_seconds": 300.0,
+        "request_timeout_seconds": 10.0,
     })())
     monkeypatch.setattr(cli, "load_products", lambda path: [PRODUCT])
     monkeypatch.setattr(cli, "AssistedCheckout", lambda *a, **k: FakeCheckout())
@@ -111,6 +113,8 @@ def test_login_opens_pages_without_watcher(monkeypatch):
         "sms_from_number": None,
         "twilio_account_sid": None,
         "twilio_auth_token": None,
+        "alert_cooldown_seconds": 300.0,
+        "request_timeout_seconds": 10.0,
     })())
     monkeypatch.setattr(cli, "load_products", lambda path: [PRODUCT])
     monkeypatch.setattr(cli, "Notifier", lambda *a, **k: None)
@@ -139,14 +143,14 @@ def test_auto_checkout_runs_background_tasks_serially(monkeypatch):
     started = []
 
     class FakeNotifier:
-        def __init__(self, *a):
+        def __init__(self, *a, **k):
             pass
 
         async def stock_available(self, result):
             pass
 
     class FakeCheckout:
-        def __init__(self, *a):
+        def __init__(self, *a, **k):
             pass
 
         async def run(self, product):
@@ -158,7 +162,7 @@ def test_auto_checkout_runs_background_tasks_serially(monkeypatch):
                 second_started.set()
 
     class FakeWatcher:
-        def __init__(self, *a):
+        def __init__(self, *a, **k):
             pass
 
         async def close(self):
@@ -182,6 +186,8 @@ def test_auto_checkout_runs_background_tasks_serially(monkeypatch):
         "sms_from_number": None,
         "twilio_account_sid": None,
         "twilio_auth_token": None,
+        "alert_cooldown_seconds": 300.0,
+        "request_timeout_seconds": 10.0,
         "poll_interval_seconds": 0,
         "poll_jitter_seconds": 0,
         "request_timeout_seconds": 1,
@@ -198,21 +204,21 @@ def test_auto_checkout_runs_background_tasks_serially(monkeypatch):
 
 def test_auto_checkout_logs_background_failures(monkeypatch, caplog):
     class FakeNotifier:
-        def __init__(self, *a):
+        def __init__(self, *a, **k):
             pass
 
         async def stock_available(self, result):
             pass
 
     class FakeCheckout:
-        def __init__(self, *a):
+        def __init__(self, *a, **k):
             pass
 
         async def run(self, product):
             raise RuntimeError("checkout crashed")
 
     class FakeWatcher:
-        def __init__(self, *a):
+        def __init__(self, *a, **k):
             pass
 
         async def close(self):
@@ -231,6 +237,8 @@ def test_auto_checkout_logs_background_failures(monkeypatch, caplog):
         "sms_from_number": None,
         "twilio_account_sid": None,
         "twilio_auth_token": None,
+        "alert_cooldown_seconds": 300.0,
+        "request_timeout_seconds": 10.0,
         "poll_interval_seconds": 0,
         "poll_jitter_seconds": 0,
         "request_timeout_seconds": 1,
@@ -262,6 +270,8 @@ def test_validate_selectors_runs_browser_validation_and_exits(monkeypatch):
         "sms_from_number": None,
         "twilio_account_sid": None,
         "twilio_auth_token": None,
+        "alert_cooldown_seconds": 300.0,
+        "request_timeout_seconds": 10.0,
     })())
     monkeypatch.setattr(cli, "load_products", lambda path: [PRODUCT])
     monkeypatch.setattr(cli, "AssistedCheckout", FakeCheckout)
