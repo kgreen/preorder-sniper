@@ -86,6 +86,8 @@ async def run(args: argparse.Namespace) -> None:
         settings.sms_from_number,
         settings.twilio_account_sid,
         settings.twilio_auth_token,
+        timeout_seconds=settings.request_timeout_seconds,
+        cooldown_seconds=settings.alert_cooldown_seconds,
     )
     if args.login:
         await checkout.open_login_pages(products)
