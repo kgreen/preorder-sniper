@@ -32,6 +32,14 @@ def test_selector_matches_html_supports_configured_selector_types():
     assert selector_matches_html("[data-test='shipItButton']", html)
 
 
+def test_selector_matches_html_supports_walmart_selector_lists():
+    selector = "[data-automation-id='add-to-cart-button'], button[data-testid='add-to-cart-button']"
+
+    assert selector_matches_html(selector, '<button data-automation-id="add-to-cart-button"></button>')
+    assert selector_matches_html(selector, '<button data-testid="add-to-cart-button"></button>')
+    assert not selector_matches_html(selector, '<button data-automation-id="notify-me"></button>')
+
+
 def _status_error(code, headers=None):
     request = httpx.Request("GET", "https://example.com")
     response = httpx.Response(code, headers=headers, request=request)

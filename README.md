@@ -33,6 +33,14 @@ still likely to need page-specific validation. In practice, Walmart product page
 Before enabling a Walmart run, confirm the live page still contains the configured selectors with
 `--validate-selectors` and keep the project's no-bypass safety policy intact.
 
+Walmart selector guidance: the example uses comma-separated selector lists (either entry may match),
+for example `[data-automation-id='add-to-cart-button'], button[data-testid='add-to-cart-button']`.
+Both the HTTP watcher and `--validate-selectors` accept these lists. Replace
+`https://www.walmart.com/ip/0000000000000` with the real `/ip/<slug>/<id>` product URL. Live
+validation of Walmart pages was not performed because plain HTTP requests are likely to be met with
+an anti-bot challenge, and bypassing that is out of scope; use `--validate-selectors` in your own
+signed-in browser profile instead.
+
 **Known limitation:** the watcher polls pages over plain HTTP, and retailers may block or
 challenge that traffic. In a 2026-10-29 check, Amazon returned a CAPTCHA page (logged as
 `served an anti-bot challenge page` rather than "not available"), Best Buy timed out, and the

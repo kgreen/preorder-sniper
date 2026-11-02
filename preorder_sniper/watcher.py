@@ -58,12 +58,15 @@ def selector_marker(selector: str) -> str:
 
 
 def selector_matches_html(selector: str, html: str) -> bool:
+    if "," in selector:
+        parts = [part.strip() for part in selector.split(",")]
+        return any(selector_matches_html(part, html) for part in parts if part)
     if selector.startswith("#"):
         pattern = rf"""\bid\s*=\s*["']{re.escape(selector[1:])}["']"""
     elif selector.startswith("."):
         class_name = re.escape(selector[1:])
         pattern = rf"""\bclass\s*=\s*["'][^"']*\b{class_name}\b[^"']*["']"""
-    elif match := re.fullmatch(r"\[([\w-]+)=['\"]([^'\"]+)['\"]\]", selector):
+    elif match := re.fullmatch(r"[\w-]*\[([\w-]+)=['\"]([^'\"]+)['\"]\]", selector):
         attribute, value = match.groups()
         pattern = rf"""\b{re.escape(attribute)}\s*=\s*["']{re.escape(value)}["']"""
     else:
