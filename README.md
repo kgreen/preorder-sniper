@@ -67,7 +67,10 @@ preorder-sniper --browser-data-dir .browser-profile
 Amazon and Best Buy often challenge or time out plain HTTP polling. Add `--browser-check` to opt in to
 checking those two retailers in the persistent browser profile instead (other retailers still use
 HTTP). If a CAPTCHA or anti-bot page appears, the tool logs it and stops checking that product until
-restart; it never tries to bypass the challenge. Browser checks are slower and share the profile with
+restart; it never tries to bypass the challenge. Browser checks wait up to 10 seconds for the stock
+control to render, treat HTTP errors (including 429 with `Retry-After`) as failed checks that use the
+normal backoff, and are skipped for that poll while the shared profile is busy (for example during an
+`--auto-checkout` review) so other retailers keep being monitored. Browser checks are slower and share the profile with
 checkout, so keep the poll interval modest. `--dry-run` does not open a browser, so it ignores
 `--browser-check`.
 

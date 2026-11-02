@@ -40,7 +40,13 @@ class BlockedError(RuntimeError):
     """The retailer returned an anti-bot challenge instead of the product page."""
 
 
-BLOCK_PAGE_MARKERS = ("/errors/validatecaptcha",)
+BLOCK_PAGE_MARKERS = (
+    "/errors/validatecaptcha",  # Amazon
+    "pardon our interruption",  # Best Buy (Imperva)
+    "<title>access denied</title>",  # Best Buy (Akamai)
+    "px-captcha",
+    "captcha-delivery.com",
+)
 
 
 def is_block_page(html: str) -> bool:
